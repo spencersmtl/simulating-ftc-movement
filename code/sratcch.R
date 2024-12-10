@@ -25,41 +25,42 @@ random_walk_step <- function(current_x, current_y) {
   return(c(current_x + dx, current_y + dy))
 }
 
-# Parameters (example values; adjust as needed)
+# Parameters
 {
-n_patches = length(unique(na.omit(landscape_data$clusters)))
+n_patches = length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
 t <- 1               # Initial time
 t_final <- 200       # number of time steps
-R0 <- 10
-C0 <- 5
-a <- 3             # Avoidability of the resource
-A <- 50              # Resource half-saturation constant
-b <- 4             # Consumer consumption ability
-B <- 33              # Consumer half-saturation constant
-e <- 0.5             # Extinction rate of the consumer
-K <- 100             # Carrying capacity
-}
+R0 <- 10             # Initial FTC in patch
+C0 <- 5              # Initial Fly in patch
+a <- 3               # Ability of FTC to avoid flies
+A <- 50              # FTC half-saturation constant ???
+b <- 4               # Fly consumption ability
+B <- 33              # Fly half-saturation constant
+e <- 0.5             # Extinction rate of the fly
+K <- 100             # FTC Carrying capacity
 
+# Initialize objects before loop
 cr_patch1 <- data.frame(Resource = numeric(t_final), # consumer-resource dynamics time series for patch 1
                         Consumer = numeric(t_final))
-cr_patch1$Resource[1] = R0
+cr_patch1$Resource[1] = R0 # Set initials
 cr_patch1$Consumer[1] = C0
-all_ftc_paths <- vector("list", t_final/5 - 2)
-all_fly_paths <- vector("list", t_final/5 - 2)
 
+all_ftc_paths <- vector("list", t_final/5 - 2) # FTC paths for plotting
+all_fly_paths <- vector("list", t_final/5 - 2) # Fly paths for plotting
+}
+
+# Time series loop containing CR and random walking
 for(t in 1:(t_final-1)) {
-  
   # Patch CR dynamics ####
   
   # Subset data for the current patch
   current_cluster <- filter(landscape_data, clusters==t)
   
   # Calculate current values
-  R1 <- cr_patch1$Resource # resource time series data for patch 1. Done for readability
-  C1 <- cr_patch1$Consumer # consumer time series data for patch 1. Done for readability
-  
-  R1[t+1] = R1[t] + a * R1[t] * (1 - R1[t] / K) - b * R1[t] / (A + R1[t]) * C1[t]
-  C1[t+1] = C1[t] + e * ((R1[t] / (A + R1[t])) - (B / (B + A))) * C1[t]
+  R1 <- cr_patch1$Resource # for readability
+  C1 <- cr_patch1$Consumer # for readability
+  R1[t+1] = R1[t] + a * R1[t] * (1 - R1[t] / K) - b * R1[t] / (A + R1[t]) * C1[t] # Resource AKA FTC dynamics
+  C1[t+1] = C1[t] + e * ((R1[t] / (A + R1[t])) - (B / (B + A))) * C1[t] # Consumer AKA Fly dynamics
   cr_patch1$Resource[t+1] <- R1[t+1]
   cr_patch1$Consumer[t+1] <- C1[t+1]
   
@@ -103,7 +104,6 @@ for(t in 1:(t_final-1)) {
     }
     all_ftc_paths[[t/5]] <- ftc_walker_paths[[i]]
     
-    i <- 1
     # Simulate fly_walkers
     for (i in 1:max(num_fly_walkers, 1)) {
       # starting position for fly_walker
