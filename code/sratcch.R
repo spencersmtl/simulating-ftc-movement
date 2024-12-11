@@ -27,28 +27,28 @@ random_walk_step <- function(current_x, current_y) {
 
 # Parameters
 {
-n_patches = length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
-t <- 1               # Initial time
-t_final <- 200       # number of time steps
-R0 <- 10             # Initial FTC in patch
-C0 <- 5              # Initial Fly in patch
-a <- 3               # Ability of FTC to avoid flies
-A <- 50              # FTC half-saturation constant ???
-b <- 4               # Fly consumption ability
-B <- 33              # Fly half-saturation constant
-e <- 0.5             # Extinction rate of the fly
-K <- 100             # FTC Carrying capacity
-
-# Initialize objects before loop
-cr_patches <- vector("list", n_patches) # cr series all patches
-cr_patch1 <- data.frame(Resource = numeric(t_final), # cr series patch 1
-                        Consumer = numeric(t_final))
-cr_patch1$Resource[1] = R0 # Set initials
-cr_patch1$Consumer[1] = C0
-cr_patches[[1]] <- cr_patch1
-
-all_ftc_paths <- vector("list", t_final/5 - 2) # FTC paths for plotting
-all_fly_paths <- vector("list", t_final/5 - 2) # Fly paths for plotting
+  n_patches = length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
+  t <- 1               # Initial time
+  t_final <- 200       # number of time steps
+  R0 <- 60             # Initial FTC in patch
+  C0 <- 20              # Initial Fly in patch
+  a <- 3               # Ability of FTC to avoid flies
+  A <- 50              # FTC half-saturation constant ???
+  b <- 5               # Fly consumption ability
+  B <- 35              # Fly half-saturation constant
+  e <- 0.5             # Extinction rate of the fly
+  K <- 100               # FTC Carrying capacity
+  
+  # Initialize objects before loop
+  cr_patches <- vector("list", n_patches) # cr series all patches
+  cr_patch1 <- data.frame(Resource = numeric(t_final), # cr series patch 1
+                          Consumer = numeric(t_final))
+  cr_patch1$Resource[1] = R0 # Set initials
+  cr_patch1$Consumer[1] = C0
+  cr_patches[[1]] <- cr_patch1
+  
+  all_ftc_paths <- vector("list", t_final/5 - 2) # FTC paths for plotting
+  all_fly_paths <- vector("list", t_final/5 - 2) # Fly paths for plotting
 }
 
 # Time series loop containing CR and random walking
