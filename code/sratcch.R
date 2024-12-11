@@ -40,10 +40,12 @@ e <- 0.5             # Extinction rate of the fly
 K <- 100             # FTC Carrying capacity
 
 # Initialize objects before loop
-cr_patch1 <- data.frame(Resource = numeric(t_final), # consumer-resource dynamics time series for patch 1
+cr_patches <- vector("list", n_patches) # cr series all patches
+cr_patch1 <- data.frame(Resource = numeric(t_final), # cr series patch 1
                         Consumer = numeric(t_final))
 cr_patch1$Resource[1] = R0 # Set initials
 cr_patch1$Consumer[1] = C0
+cr_patches[[1]] <- cr_patch1
 
 all_ftc_paths <- vector("list", t_final/5 - 2) # FTC paths for plotting
 all_fly_paths <- vector("list", t_final/5 - 2) # Fly paths for plotting
