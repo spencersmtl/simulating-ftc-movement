@@ -3,24 +3,24 @@
     "path": "~/R/simulating-ftc-movement/code/sratcch.R",
     "project_path": "code/sratcch.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2279849817",
     "contents": "",
-    "dirty": true,
+    "dirty": false,
     "created": 1733842637616.0,
     "source_on_save": false,
     "relative_order": 3,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "102,32",
-        "scrollLine": "65"
+        "cursorPosition": "90,0",
+        "scrollLine": "79"
     },
-    "folds": "71|3|87|2|\n",
-    "lastKnownWriteTime": 1733929063,
+    "folds": "",
+    "lastKnownWriteTime": 1733941141,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1733935967979,
+    "last_content_update": 1733941141503,
     "read_only": false,
     "read_only_alternatives": []
 }
