@@ -1,0 +1,22 @@
+# Assuming your data.frame is named `df`
+df <- data.frame(
+  x = c(1, 1, 1, 1, 1, 1, 1, 1, 1),
+  y = c(1, 2, 3, 4, 5, 6, 7, 8, 9),
+  value = rep(0.25, 9),
+  type = rep("high", 9),
+  clusters = c(1, 1, 2, 2, 1, 1, 1, 1, 1),
+  dens = c(0.0037, 0.00371, 0.00372, 0.00373, 0.00374, 0.00375, 0.00376, 0.00376, 0.00374),
+  in_patch = rep(TRUE, 9),
+  resource_occupied = rep(TRUE, 9),
+  consumer_occupied = rep(TRUE, 9)
+)
+if (2 %in% df$clusters) {
+  # Get the first row where clusters == 2
+  first_row_with_cluster_2 <- df[df$clusters == 2, ][1, ]
+  
+  # Extract the consumer_occupied value
+  consumer_value <- first_row_with_cluster_2$consumer_occupied
+  print(consumer_value)
+} else {
+  print("No row with clusters == 2 found.")
+}
