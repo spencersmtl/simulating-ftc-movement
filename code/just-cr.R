@@ -1,0 +1,86 @@
+# Load the landscape data
+landscape_data <- readRDS("data/50x50_scale2a_simple_patches_data.rds")
+landscape_data$resource_occupied <- landscape_data$clusters == 1 # initial occupancy status
+landscape_data$consumer_occupied <- landscape_data$clusters == 1
+
+# General Parameters
+n_patches <- length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
+t <- 1               # Initial time
+t_final <- 200       # number of time steps
+walker_interval <- t_final/5 # how often each patch sends out walkers
+R0 <- 100             # Initial FTC in patch
+C0 <- 20             # Initial Fly in patch
+
+# Model parameters. Note: aR/(1+aqR) is functional response of flies to FTC density
+r <- 1.5              # FTC intrinsic growth rate
+K <- 10000            # FTC Carrying capacity
+e <- 0.2              # Conversion rate
+m <- 0.001             # Fly mortality rate
+a <- 0.8             # Predator attacking rate
+q <- 0.5              # Predator handling time
+# For educational purposes
+initial_ftc_growth <- r * R0 * (1 - R0/K)
+initial_ftc_death <- a * C0 * R0 / (1 + a * q * R0)
+initial_ftc_total <- initial_ftc_growth - initial_ftc_death
+initial_ftc_total
+initial_fly_growth <- C0 * (a * e * R0 / (1 + a * q * R0) - m)
+initial_fly_growth
+
+cr_patches_r <- matrix(0, ncol = n_patches, nrow = t_final)
+cr_patches_c <- matrix(0, ncol = n_patches, nrow = t_final)
+cr_patches_r[1,1] = R0 # Set initials
+cr_patches_c[1,1] = C0
+
+patch_occupied <- data.frame(resource_occupied = rep(FALSE, n_patches), # occupied tag
+                             consumer_occupied = rep(FALSE, n_patches))
+patch_occupied$resource_occupied[1] <- TRUE
+patch_occupied$consumer_occupied[1] <- TRUE
+
+patch_death_tracker <- rep(0,n_patches) # patch extinction tracker
+
+for(t in 2:(t_final)) # Time series loop containing CR and random walking
+{
+  for(i in 1:n_patches) # Compute CR for each patch
+  {
+    
+    if(patch_death_tracker[i]>20) # Patch death!
+    { 
+      landscape_data$clusters[landscape_data$clusters == i] <- 0
+      patch_occupied[i,] <- FALSE
+    }
+    
+    if(patch_occupied[i,1] & patch_occupied[i,2]) # Occupied by both
+    { 
+      cr_patches_r[t,i] = pmax( # change in FTC population
+          r * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K) - 
+          (a * cr_patches_r[t-1,i] * cr_patches_c[t-1,i]) /
+          (1 + a * q * cr_patches_r[t-1,i]), 0
+      )
+      cr_patches_c[t,i] = pmax( # Change in fly population
+          cr_patches_c[t-1,i] * 
+          ((a * e * cr_patches_r[t-1,i]) / 
+             (1 + a * q * cr_patches_r[t-1,i]) - m), 0
+      )
+    }
+    
+    if(patch_occupied[i,1] & patch_occupied[i,2] == FALSE) # Occupied by just FTC
+    { 
+      cr_patches_r[t-1,i] +     cr_patches_r[t,i] = pmax( # change in FTC population
+        r * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K)
+      )
+    }
+    
+    if(cr_patches_r[t,i]>80)# Track if patch is going extinct
+    { 
+      patch_death_tracker[i] <- patch_death_tracker[i]+1} else {patch_death_tracker[i]=0}
+  }
+}
+
+cr_both_1 <- as.data.frame(cbind(cr_patches_r[,1],cr_patches_c[,1]))
+# patch 1 CR plot
+ggplot(cr_both_1, aes(x = as.numeric(row.names(cr_both_1)))) +
+  geom_path(aes(y = cr_both_1[,1]), colour = "salmon") +
+  geom_path(aes(y = cr_both_1[,2]), colour = "purple") +
+  labs(title = "Patch Dynamics", x = "Timestep", y = "Population size") +
+  theme_minimal() +
+  theme(legend.position="none")
