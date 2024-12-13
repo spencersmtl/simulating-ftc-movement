@@ -5,12 +5,10 @@ library(tidyverse)
 
 # Load the landscape data
 landscape_data <- readRDS("data/50x50_scale2a_simple_patches_data.rds")
-
-# Initialize occupancy status of patch
-landscape_data$resource_occupied <- landscape_data$clusters == 1
+landscape_data$resource_occupied <- landscape_data$clusters == 1 # initial occupancy status
 landscape_data$consumer_occupied <- landscape_data$clusters == 1
 
-# Function to perform random walks for both FTC and fly
+# function to perform random walks for both FTC and fly
 random_walk_step <- function(current_x, current_y) {
   dx <- sample(c(-8, -4, 0, 4, 8), 1) # x direction
   dy <- sample(c(-8, -4, 0, 4, 8), 1) # y direction
@@ -25,35 +23,27 @@ t <- 1               # Initial time
 t_final <- 200       # number of time steps
 walker_interval <- t_final/5 # how often each patch sends out walkers
 R0 <- 60             # Initial FTC in patch
-C0 <- 20              # Initial Fly in patch
+C0 <- 20             # Initial Fly in patch
 a <- 3               # Ability of FTC to avoid flies
 A <- 50              # FTC half-saturation constant ???
 b <- 5               # Fly consumption ability
-B <- 35              # Fly half-saturation constant
+B <- 35              # Scales fly mortality
 e <- 0.5             # Extinction rate of the fly
-K <- 100               # FTC Carrying capacity
+K <- 100             # FTC Carrying capacity
 
 cr_patches_r <- matrix(0, ncol = n_patches, nrow = t_final)
 cr_patches_c <- matrix(0, ncol = n_patches, nrow = t_final)
 cr_patches_r[1,1] = R0 # Set initials
 cr_patches_c[1,1] = C0
 
-patch_occupied <- data.frame(resource_occupied = rep(FALSE, n_patches), 
+patch_occupied <- data.frame(resource_occupied = rep(FALSE, n_patches), # occupied tag
                              consumer_occupied = rep(FALSE, n_patches))
 patch_occupied$resource_occupied[1] <- TRUE
-patch_occupied$consumer_occupied[1] <- TRUE#landscape_data[landscape_data$clusters == i,][1,]$resource_occupied
+patch_occupied$consumer_occupied[1] <- TRUE
 
-patch_death_tracker <- rep(0,n_patches)
+patch_death_tracker <- rep(0,n_patches) # patch extinction tracker
 
-per_t_ftc_walker_paths <- vector("list", 1) # All paths in all patches per time step
-per_t_fly_walker_paths <- vector("list", 1)
-
-all_patchwise_ftc_paths <- vector("list", t_final/5 - 2) # All paths in all patches for all time steps
-all_patchwise_fly_paths <- vector("list", t_final/5 - 2) 
-
-all_ftc_paths <- vector("list", n_patches)
-
-# Create the main list for all FTC and Fly walks
+# list for all FTC and Fly walk lists
 all_ftc_walks <- vector("list", n_patches)
 all_fly_walks <- vector("list", n_patches)
 for (n in 1:n_patches) {
@@ -169,21 +159,22 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
 # Random walker plot
 patch_map <- ggplot(landscape_data) +
   geom_raster(aes(x = x, y = -y, fill = as.factor(clusters))) +
-  geom_path(data = do.call(rbind, all_ftc_walks[[1]][[5]]), 
+  geom_path(data = do.call(rbind, all_ftc_walks[[1]][[10]]), 
             aes(x = x, y = -y), 
-            color = "blue", linewidth = 1) +
-  geom_path(data = do.call(rbind, all_fly_walks[[1]][[5]]), 
+            color = "salmon", linewidth = 1) +
+  geom_path(data = do.call(rbind, all_fly_walks[[1]][[10]]), 
             aes(x = x, y = -y), 
-            color = "red", linewidth = 1) +
+            color = "purple", linewidth = 1) +
   scale_fill_viridis(discrete = TRUE, option = "D", na.value = "white") +
   theme(legend.position = "none") +
   coord_equal()
 patch_map
 
+cr_both_1 <- as.data.frame(cbind(cr_patches_r[,1],cr_patches_c[,1]))
 # patch 1 CR plot
-ggplot(cr_patch, aes(x = as.numeric(row.names(cr_patch)))) +
-  geom_path(aes(y = R), colour = "salmon") +
-  geom_path(aes(y = C), colour = "purple") +
+ggplot(cr_both_1, aes(x = as.numeric(row.names(cr_both_1)))) +
+  geom_path(aes(y = cr_both_1[,1]), colour = "salmon") +
+  geom_path(aes(y = cr_both_1[,2]), colour = "purple") +
   labs(title = "Patch Dynamics", x = "Timestep", y = "Population size") +
   theme_minimal() +
   theme(legend.position="none")
@@ -195,6 +186,3 @@ patch_map <- ggplot(landscape_data) +
   theme(legend.position = "none") +
   coord_equal()
 patch_map
-
-# Iterate over patches
-unique_patches <- unique(na.omit(landscape_data$clusters))
