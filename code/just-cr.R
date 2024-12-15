@@ -8,23 +8,14 @@ n_patches <- length(unique(na.omit(landscape_data$clusters))) # Number of patche
 t <- 1               # Initial time
 t_final <- 200       # number of time steps
 walker_interval <- t_final/5 # how often each patch sends out walkers
-R0 <- 100             # Initial FTC in patch
-C0 <- 20             # Initial Fly in patch
-
-# Model parameters. Note: aR/(1+aqR) is functional response of flies to FTC density
-r <- 1.5              # FTC intrinsic growth rate
-K <- 10000            # FTC Carrying capacity
-e <- 0.2              # Conversion rate
-m <- 0.001             # Fly mortality rate
-a <- 0.8             # Predator attacking rate
-q <- 0.5              # Predator handling time
-# For educational purposes
-initial_ftc_growth <- r * R0 * (1 - R0/K)
-initial_ftc_death <- a * C0 * R0 / (1 + a * q * R0)
-initial_ftc_total <- initial_ftc_growth - initial_ftc_death
-initial_ftc_total
-initial_fly_growth <- C0 * (a * e * R0 / (1 + a * q * R0) - m)
-initial_fly_growth
+R0 <- 50             # Initial FTC in patch
+C0 <- 10             # Initial Fly in patch
+a <- 2.8               # FTC Growth rate
+A <- 52              # FTC half-saturation constant ???
+b <- 5               # Fly consumption ability
+m <- 0.4              # Mortality
+e <- 0.5             # Fly extinction rate
+K <- 100               # FTC Carrying capacity
 
 cr_patches_r <- matrix(0, ncol = n_patches, nrow = t_final)
 cr_patches_c <- matrix(0, ncol = n_patches, nrow = t_final)
@@ -51,25 +42,25 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
     
     if(patch_occupied[i,1] & patch_occupied[i,2]) # Occupied by both
     { 
-      cr_patches_r[t,i] = pmax( # change in FTC population
-          r * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K) - 
-          (a * cr_patches_r[t-1,i] * cr_patches_c[t-1,i]) /
-          (1 + a * q * cr_patches_r[t-1,i]), 0
+      cr_patches_r[t,i] = pmax(
+        cr_patches_r[t-1,i] + 
+          a * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K) - 
+          b * cr_patches_r[t-1,i] / (A + cr_patches_r[t-1,i]) * cr_patches_c[t-1,i],0
       )
-      cr_patches_c[t,i] = pmax( # Change in fly population
-          cr_patches_c[t-1,i] * 
-          ((a * e * cr_patches_r[t-1,i]) / 
-             (1 + a * q * cr_patches_r[t-1,i]) - m), 0
+      cr_patches_c[t,i] = pmax(
+        cr_patches_c[t-1,i] + 
+          e * cr_patches_c[t-1,i] * 
+          ((cr_patches_r[t-1,i] / (A + cr_patches_r[t-1,i])) - m),0
       )
     }
     
     if(patch_occupied[i,1] & patch_occupied[i,2] == FALSE) # Occupied by just FTC
     { 
-      cr_patches_r[t-1,i] +     cr_patches_r[t,i] = pmax( # change in FTC population
-        r * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K)
-      )
+      cr_patches_r[t,i] = pmax(
+        cr_patches_r[t-1,i] + 
+          a * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K),0)
     }
-    
+
     if(cr_patches_r[t,i]>80)# Track if patch is going extinct
     { 
       patch_death_tracker[i] <- patch_death_tracker[i]+1} else {patch_death_tracker[i]=0}

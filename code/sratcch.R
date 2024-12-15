@@ -10,8 +10,8 @@ landscape_data$consumer_occupied <- landscape_data$clusters == 1
 
 # function to perform random walks for both FTC and fly
 random_walk_step <- function(current_x, current_y) {
-  dx <- sample(c(-8, -4, 0, 4, 8), 1) # x direction
-  dy <- sample(c(-8, -4, 0, 4, 8), 1) # y direction
+  dx <- sample(c(-8, -4, 4, 8), 1) # x direction
+  dy <- sample(c(-8, -4, 4, 8), 1) # y direction
   return(c(current_x + dx, current_y + dy))
 }
 
@@ -22,14 +22,14 @@ fly_steps <- 20
 t <- 1               # Initial time
 t_final <- 200       # number of time steps
 walker_interval <- t_final/5 # how often each patch sends out walkers
-R0 <- 60             # Initial FTC in patch
-C0 <- 20             # Initial Fly in patch
-a <- 3               # Ability of FTC to avoid flies
-A <- 50              # FTC half-saturation constant ???
-b <- 5               # Fly consumption ability
-B <- 35              # Scales fly mortality
-e <- 0.5             # Extinction rate of the fly
-K <- 100             # FTC Carrying capacity
+R0 <- 50             # Initial FTC in patch
+C0 <- 10             # Initial Fly in patch
+a <- 2.8               # FTC Growth rate
+A <- 52              # FTC half-saturation constant ???
+b <- 6               # Fly consumption ability
+m <- 0.4              # Mortality
+e <- 0.5             # Fly extinction rate
+K <- 100               # FTC Carrying capacity
 
 cr_patches_r <- matrix(0, ncol = n_patches, nrow = t_final)
 cr_patches_c <- matrix(0, ncol = n_patches, nrow = t_final)
@@ -60,30 +60,43 @@ names(all_fly_walks) <- paste0("Patch_", 1:n_patches)
 
 for(t in 2:(t_final)) # Time series loop containing CR and random walking
 {
-  for(i in 1:n_patches) # Compute CR for each patch
+  for(i in 1:n_patches) # PATCHWISE CR
   {
-    if(patch_death_tracker[i]>20) {
+    
+    if(patch_death_tracker[i]>20) # Patch death!
+    { 
       landscape_data$clusters[landscape_data$clusters == i] <- 0
       patch_occupied[i,] <- FALSE
     }
-    if(patch_occupied[i,1] & patch_occupied[i,2]){ # If occupied by both FTC and fly
-      
-      cr_patches_r[t,i] = cr_patches_r[t-1,i] + a * cr_patches_r[t-1,i] *  # Resource AKA FTC dynamics
-        (1 - cr_patches_r[t-1,i] / K) - b * cr_patches_r[t-1,i] / (A + cr_patches_r[t-1,i]) * cr_patches_c[t-1,i]
-      cr_patches_c[t,i] = cr_patches_c[t-1] + e * # Consumer AKA Fly dynamics
-        ((cr_patches_r[t-1] / (A + cr_patches_r[t-1])) - (B / (B + A))) * cr_patches_c[t-1] 
+    
+    if(patch_occupied[i,1] & patch_occupied[i,2]) # Occupied by both
+    { 
+      cr_patches_r[t,i] = pmax(
+        cr_patches_r[t-1,i] + 
+          a * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K) - 
+          b * cr_patches_r[t-1,i] / (A + cr_patches_r[t-1,i]) * cr_patches_c[t-1,i],0
+      )
+      cr_patches_c[t,i] = pmax(
+        cr_patches_c[t-1,i] + 
+          e * cr_patches_c[t-1,i] * 
+          ((cr_patches_r[t-1,i] / (A + cr_patches_r[t-1,i])) - m),0
+      )
     }
-    if(patch_occupied[i,1] & patch_occupied[i,2] == FALSE){ # If occupied by JUST FTC
-      
-      cr_patches_r[t,i] = cr_patches_r[t-1] + a * cr_patches_r[t-1] *  # Resource AKA FTC dynamics
-        (1 - cr_patches_r[t-1] / K)
+    
+    if(patch_occupied[i,1] & patch_occupied[i,2] == FALSE) # Occupied by just FTC
+    { 
+      cr_patches_r[t,i] = pmax(
+        cr_patches_r[t-1,i] + 
+          a * cr_patches_r[t-1,i] * (1 - cr_patches_r[t-1,i] / K),0)
     }
-    if(cr_patches_r[t,i]>80) { # Track if patch is going extinct
+    
+    if(cr_patches_r[t,i]>80)# Track if patch is going extinct
+    { 
       patch_death_tracker[i] <- patch_death_tracker[i]+1} else {patch_death_tracker[i]=0}
   }
-  if(t %% 5 == 0) # every 5 time steps...
+  if(t %% 5 == 0) # RANDOM WALKS
   {
-    for(i in 1:n_patches) # Compute random walks for each patch that is occupied
+    for(i in 1:n_patches) # Each occupied patch
     {
       if(patch_occupied[i,1]) # FTC
       {
@@ -113,12 +126,23 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
             
             ftc_walker_path <- rbind(ftc_walker_path, c(current_x, current_y))
           }
+          # Tagging new occupied patches
+          matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
+            paste(ftc_walker_path$x, ftc_walker_path$y) # all points the walker touched
+          matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
+          patch_occupied[, 1] <- ifelse(
+            patch_occupied[, 1] == FALSE & 
+              seq_len(nrow(patch_occupied)) %in% matching_patches, 
+            TRUE, 
+            patch_occupied[, 1]
+          )
+          
+            
           ftc_walkers[[j]] <- ftc_walker_path # Each walker gets a list entry
         }
         # store list of individual walker dataframes in a new list! Per patch
         all_ftc_walks[[i]][[t]] <- ftc_walkers
       }
-    
       if(patch_occupied[i,2]) # FLY
       {
         num_fly_walkers <- pmax(floor(cr_patches_c[t,i]/10),1) # Number of walkers is proportional to patch population size
@@ -147,6 +171,14 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
             
             fly_walker_path <- rbind(fly_walker_path, c(current_x, current_y))
           }
+          # Tagging new occupied patches
+          matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
+            paste(fly_walker_path$x, fly_walker_path$y) # all points the walker touched
+          matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
+          patch_occupied[, 1] <- ifelse(
+            patch_occupied[, 1] %in% # Set any unoccupied, newly encountered patches to occupied
+              matching_patches & patch_occupied[, 1] == FALSE, TRUE, patch_occupied[, 1])
+          
           fly_walkers[[j]] <- fly_walker_path # Each walker gets a list entry
         }
         # store list of individual walker dataframes in a new list! Per patch
