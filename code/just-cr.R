@@ -12,7 +12,7 @@ R0 <- 50             # Initial FTC in patch
 C0 <- 10             # Initial Fly in patch
 a <- 2.8               # FTC Growth rate
 A <- 52              # FTC half-saturation constant ???
-b <- 5               # Fly consumption ability
+b <- 6               # Fly consumption ability
 m <- 0.4              # Mortality
 e <- 0.5             # Fly extinction rate
 K <- 100               # FTC Carrying capacity

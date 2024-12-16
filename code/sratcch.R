@@ -127,15 +127,15 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
             ftc_walker_path <- rbind(ftc_walker_path, c(current_x, current_y))
           }
           # Tagging new occupied patches
-          matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
-            paste(ftc_walker_path$x, ftc_walker_path$y) # all points the walker touched
-          matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
-          patch_occupied[, 1] <- ifelse(
-            patch_occupied[, 1] == FALSE & 
-              seq_len(nrow(patch_occupied)) %in% matching_patches, 
-            TRUE, 
-            patch_occupied[, 1]
-          )
+          # matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
+          #   paste(ftc_walker_path$x, ftc_walker_path$y) # all points the walker touched
+          # matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
+          # patch_occupied[, 1] <- ifelse(
+          #   patch_occupied[, 1] == FALSE & 
+          #     seq_len(nrow(patch_occupied)) %in% matching_patches, 
+          #   TRUE, 
+          #   patch_occupied[, 1]
+          # )
           
             
           ftc_walkers[[j]] <- ftc_walker_path # Each walker gets a list entry
@@ -172,12 +172,12 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
             fly_walker_path <- rbind(fly_walker_path, c(current_x, current_y))
           }
           # Tagging new occupied patches
-          matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
-            paste(fly_walker_path$x, fly_walker_path$y) # all points the walker touched
-          matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
-          patch_occupied[, 1] <- ifelse(
-            patch_occupied[, 1] %in% # Set any unoccupied, newly encountered patches to occupied
-              matching_patches & patch_occupied[, 1] == FALSE, TRUE, patch_occupied[, 1])
+          # matches <- paste(landscape_data$x, landscape_data$y) %in% # matching landscape_data rows
+          #   paste(fly_walker_path$x, fly_walker_path$y) # all points the walker touched
+          # matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
+          # patch_occupied[, 1] <- ifelse(
+          #   patch_occupied[, 1] %in% # Set any unoccupied, newly encountered patches to occupied
+          #     matching_patches & patch_occupied[, 1] == FALSE, TRUE, patch_occupied[, 1])
           
           fly_walkers[[j]] <- fly_walker_path # Each walker gets a list entry
         }
