@@ -4,7 +4,7 @@ library(viridis)
 library(tidyverse)
 
 # Load the landscape data
-landscape_data <- readRDS("data/50x50_scale2a_simple_patches_data.rds")
+landscape_data <- readRDS("data/complex eigenpatches data.rds")$landscape
 landscape_data$resource_occupied <- landscape_data$clusters == 1 # initial occupancy status
 landscape_data$consumer_occupied <- landscape_data$clusters == 1
 
