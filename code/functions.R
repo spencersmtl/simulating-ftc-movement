@@ -1,9 +1,5 @@
 # Required libraries ####
-library(tidyr)
-library(dplyr)
-library(ggplot2)
-library(stringr) # Manipulate strings
-library(readr) # allows reading csv files
+library(tidyverse)
 library(imager) # load.image function
 library(viridis) # nice colors for plot
 library(paletteer)
@@ -21,9 +17,10 @@ library(profvis) # profiling
 library(microbenchmark) # how long's it take?
 library(beepr) # beep() lets you know when running code is finished
 
-#calculating distances with the power of c++!
-library(Rcpp)
+library(Rcpp) #calculating distances with the power of c++!
 library(RcppArmadillo)
+
+library(png)
 
 # Compiling c++ distance functions ####
 Rcpp::sourceCpp("code/fast_dist.cpp")

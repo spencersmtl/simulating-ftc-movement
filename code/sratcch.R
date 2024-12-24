@@ -1,19 +1,7 @@
-# Load necessary libraries
-library(png)
-library(viridis)
-library(tidyverse)
-
 # Load the landscape data
 landscape_data <- readRDS("data/50x50_scale2a_simple_patches_data.rds")
 landscape_data$resource_occupied <- landscape_data$clusters == 1 # initial occupancy status
 landscape_data$consumer_occupied <- landscape_data$clusters == 1
-
-# function to perform random walks for both FTC and fly
-random_walk_step <- function(current_x, current_y) {
-  dx <- sample(c(-8, -4, 0, 4, 8), 1) # x direction
-  dy <- sample(c(-8, -4, 0, 4, 8), 1) # y direction
-  return(c(current_x + dx, current_y + dy))
-}
 
 # Parameters
 n_patches <- length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
@@ -22,19 +10,19 @@ fly_steps <- 20
 t <- 1               # Initial time
 t_final <- 200       # number of time steps
 walker_interval <- t_final/5 # how often each patch sends out walkers
-R0 <- 60             # Initial FTC in patch
-C0 <- 20             # Initial Fly in patch
-a <- 3               # Ability of FTC to avoid flies
-A <- 50              # FTC half-saturation constant ???
-b <- 5               # Fly consumption ability
-B <- 35              # Scales fly mortality
-e <- 0.5             # Extinction rate of the fly
-K <- 100             # FTC Carrying capacity
+H0 <- 60             # Initial host population in patch
+P0 <- 20             # Initial parasitoid population in patch
+r <- 3               # Intrinsic host growth rate
+a <- 1               # Parasitoid attack rate
+handle_t <- 1        # Handling time
+e <- 0.5             # Parasitoid efficiency
+d <- 1               # Parasitoid mortality
+K <- 100             # Host carrying capacity
 
-cr_patches_r <- matrix(0, ncol = n_patches, nrow = t_final)
-cr_patches_c <- matrix(0, ncol = n_patches, nrow = t_final)
-cr_patches_r[1,1] = R0 # Set initials
-cr_patches_c[1,1] = C0
+H <- matrix(nrow = t_final, ncol = n_patches)
+P <- matrix(nrow = t_final, ncol = n_patches)
+H[1,1] <- H0
+P[1,1] <- P0
 
 patch_occupied <- data.frame(resource_occupied = rep(FALSE, n_patches), # occupied tag
                              consumer_occupied = rep(FALSE, n_patches))
@@ -55,7 +43,15 @@ for (n in 1:n_patches) {
 names(all_ftc_walks) <- paste0("Patch_", 1:n_patches)
 names(all_fly_walks) <- paste0("Patch_", 1:n_patches)
 
-
+for (t in 2:t_final) {
+  for (n in 1:n_patches) {
+    # Update host population
+    H[t, n] <- H[t - 1, n] + H_delta(H, P, r, a, K, handle_t, t, n)
+    
+    # Update parasitoid population
+    P[t, n] <- P[t - 1, n] + P_delta(H, P, e, a, d, handle_t, t, n)
+  }
+}
 
 
 for(t in 2:(t_final)) # Time series loop containing CR and random walking
