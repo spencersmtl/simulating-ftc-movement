@@ -5,10 +5,15 @@ landscape_data$consumer_occupied <- landscape_data$clusters == 1
 
 # Parameters
 n_patches <- length(unique(na.omit(landscape_data$clusters))) # Number of patches omitting NAs
-ftc_steps <- 10
-fly_steps <- 20
+
+H_n_steps <- 1
+P_n_steps <- 5
+H_step_range <- seq(from = -20, to = 20, 5)
+P_step_range <- seq(from = -20, to = 20, 5)
+
 t <- 1               # Initial time
 t_final <- 200       # number of time steps
+
 walker_interval <- t_final/5 # how often each patch sends out walkers
 H0 <- 60             # Initial host population in patch
 P0 <- 20             # Initial parasitoid population in patch
@@ -23,6 +28,13 @@ H <- matrix(nrow = t_final, ncol = n_patches)
 P <- matrix(nrow = t_final, ncol = n_patches)
 H[1,1] <- H0
 P[1,1] <- P0
+
+H_path <- walk_step(n_steps = H_n_steps, step_length = H_step_range, 
+                    cluster_id, landscape_data)
+
+
+
+
 
 patch_occupied <- data.frame(resource_occupied = rep(FALSE, n_patches), # occupied tag
                              consumer_occupied = rep(FALSE, n_patches))
@@ -43,6 +55,7 @@ for (n in 1:n_patches) {
 names(all_ftc_walks) <- paste0("Patch_", 1:n_patches)
 names(all_fly_walks) <- paste0("Patch_", 1:n_patches)
 
+
 for (t in 2:t_final) {
   for (n in 1:n_patches) {
     # Update host population
@@ -52,6 +65,7 @@ for (t in 2:t_final) {
     P[t, n] <- P[t - 1, n] + P_delta(H, P, e, a, d, handle_t, t, n)
   }
 }
+
 
 
 for(t in 2:(t_final)) # Time series loop containing CR and random walking
