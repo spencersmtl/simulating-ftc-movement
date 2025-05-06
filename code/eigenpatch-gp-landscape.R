@@ -5,18 +5,18 @@ library(ggplotify)
 
 # Parameters ####
 {
-  clustering_method = c("hclust") # options: "hclust", "DBSCAN", "OPTICS"
+  clustering_method = c("OPTICS") # options: "hclust", "DBSCAN", "OPTICS"
   n_eigs = 10 # Number of eigenvectors/eigenvalues to calculate
   tau = 40 # Interaction time
-  landscape_img = "images/50x50_scale2a_simple.png" # Use any png. Images larger than 100x100 may take a very long time to compute
+  landscape_img = "images/50x50_scalepoint5b.png" # Use any png. Images larger than 100x100 may take a very long time to compute
 
   # hclust parameters
-  n_clust = 4 # Number of patches to define.
+  n_clust = 15 # Number of patches to define.
   
-  # DBSCAN parameters
+  # DBSCAN & OPTICS parameters
   minPts = 4 # Defines minimum size of cluster.
   eps = 20 # DBSCAN radius of neighbourhood around each point. See DBSCAN literature for more information
-  eps_cl = 100 # OPTICS radius of reachability around each point. See OPTICS literature for more information
+  eps_cl = 2.5 # OPTICS radius of reachability around each point. See OPTICS literature for more information
   
   # Movement model parameters: c(high, mid, low) habitat quality
   step_length = c(0.5, 0.5, 2) # Higher numbers increase distance traveled per step
@@ -104,3 +104,67 @@ library(ggplotify)
     grid.arrange(as.grob(~plot(gp_landscape$reachability)), patch_map, ncol = 2)
   }
 }
+
+# Load necessary libraries
+library(ggplot2)
+library(broom)   # For tidying model outputs
+library(car)     # For diagnostic tests
+library(interactions) # For visualizing interactions
+
+# Fit the linear model
+model <- lm(value ~ group * category, data = data)
+
+# Check model summary
+summary(model)
+
+# Run diagnostic tests
+# 1. Check for multicollinearity (VIF)
+vif_results <- car::vif(model)
+
+# 2. Residual diagnostics
+par(mfrow = c(2, 2))  # Set up a 2x2 plotting area
+plot(model)           # Diagnostic plots: Residuals, Normal Q-Q, Scale-location, etc.
+
+# Check for interactions
+interaction_plot <- interact_plot(
+  model, pred = category, modx = group,
+  interval = TRUE, legend.main = "Group"
+)
+
+# Tidy model parameters
+tidy_results <- broom::tidy(model)
+
+# Check ANOVA for significance of terms
+anova_results <- anova(model)
+
+# Create a summary table of parameter estimates
+parameters <- summary(model)$coefficients
+
+# Presenting results in a clean table
+library(gt)
+tidy_results %>%
+  gt() %>%
+  tab_header(
+    title = "Linear Model Results",
+    subtitle = "Including Interaction Effects"
+  ) %>%
+  fmt_number(
+    columns = c(estimate, std.error, statistic, p.value),
+    decimals = 3
+  ) %>%
+  cols_label(
+    term = "Predictor",
+    estimate = "Estimate",
+    std.error = "Std. Error",
+    statistic = "t-Statistic",
+    p.value = "P-Value"
+  ) %>%
+  tab_options(
+    table.font.size = 12,
+    heading.title.font.size = 14,
+    heading.subtitle.font.size = 12,
+    column_labels.font.weight = "bold"
+  )
+
+# Check interaction effects (optional visualization)
+print(interaction_plot)

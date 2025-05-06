@@ -10,8 +10,8 @@ landscape_data$consumer_occupied <- landscape_data$clusters == 1
 
 # function to perform random walks for both FTC and fly
 random_walk_step <- function(current_x, current_y) {
-  dx <- sample(c(-8, -4, 4, 8), 1) # x direction
-  dy <- sample(c(-8, -4, 4, 8), 1) # y direction
+  dx <- sample(c(-3, -2, -1, 0, 1, 2, 3), 1) # x direction
+  dy <- sample(c(-3, -2, -1, 0, 1, 2, 3), 1) # y direction
   return(c(current_x + dx, current_y + dy))
 }
 
@@ -106,7 +106,7 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
         start_positions_ftc <- landscape_data %>% # FTC starting positions
           filter(resource_occupied, clusters == i) %>%
           sample_n(num_ftc_walkers, replace = TRUE) %>%
-          select(x, y)
+          dplyr::select(x, y)
         
         for (j in 1:num_ftc_walkers) # Simulate each ftc walker
         {
@@ -131,12 +131,12 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
           #   paste(ftc_walker_path$x, ftc_walker_path$y) # all points the walker touched
           # matching_patches <- unique(landscape_data$clusters[matches]) # Match the patch number
           # patch_occupied[, 1] <- ifelse(
-          #   patch_occupied[, 1] == FALSE & 
-          #     seq_len(nrow(patch_occupied)) %in% matching_patches, 
-          #   TRUE, 
+          #   patch_occupied[, 1] == FALSE &
+          #     seq_len(nrow(patch_occupied)) %in% matching_patches,
+          #   TRUE,
           #   patch_occupied[, 1]
           # )
-          
+
             
           ftc_walkers[[j]] <- ftc_walker_path # Each walker gets a list entry
         }
@@ -151,7 +151,7 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
         start_positions_fly <- landscape_data %>% # fly starting positions
           filter(consumer_occupied, clusters == i) %>%
           sample_n(num_fly_walkers, replace = TRUE) %>%
-          select(x, y)
+          dplyr::select(x, y)
         
         for (j in 1:num_fly_walkers) # Simulate each fly walker
         {
@@ -191,30 +191,41 @@ for(t in 2:(t_final)) # Time series loop containing CR and random walking
 # Random walker plot
 patch_map <- ggplot(landscape_data) +
   geom_raster(aes(x = x, y = -y, fill = as.factor(clusters))) +
-  geom_path(data = do.call(rbind, all_ftc_walks[[1]][[10]]), 
+  geom_path(data = do.call(rbind, all_ftc_walks[[1]][[5]]), 
             aes(x = x, y = -y), 
-            color = "salmon", linewidth = 1) +
-  geom_path(data = do.call(rbind, all_fly_walks[[1]][[10]]), 
+            color = "salmon", linewidth = 1.5) +
+  geom_path(data = do.call(rbind, all_fly_walks[[1]][[5]]), 
             aes(x = x, y = -y), 
-            color = "purple", linewidth = 1) +
-  scale_fill_viridis(discrete = TRUE, option = "D", na.value = "white") +
+            color = "purple", linewidth = 1.5) +
+  geom_path(data = do.call(rbind, all_ftc_walks[[1]][[15]]), 
+            aes(x = x, y = -y), 
+            color = "salmon", linewidth = 1.5) +
+  geom_path(data = do.call(rbind, all_fly_walks[[1]][[15]]), 
+            aes(x = x, y = -y), 
+            color = "purple", linewidth = 1.5) +
   theme(legend.position = "none") +
+  theme_void() +
+  scale_fill_paletteer_d("ggsci::default_ucscgb", na.value = "grey95")+
   coord_equal()
 patch_map
 
 cr_both_1 <- as.data.frame(cbind(cr_patches_r[,1],cr_patches_c[,1]))
 # patch 1 CR plot
 ggplot(cr_both_1, aes(x = as.numeric(row.names(cr_both_1)))) +
-  geom_path(aes(y = cr_both_1[,1]), colour = "salmon") +
-  geom_path(aes(y = cr_both_1[,2]), colour = "purple") +
+  geom_path(aes(y = cr_both_1[,1], colour = "FTC"), linewidth = 1) +
+  geom_path(aes(y = cr_both_1[,2], colour = "Specialist parasitoids"), linewidth = 1) +
+  scale_colour_manual(
+    name = "Patch population size", 
+    values = c("FTC" = "salmon", "Specialist parasitoids" = "purple")
+  ) +
   labs(title = "Patch Dynamics", x = "Timestep", y = "Population size") +
-  theme_minimal() +
-  theme(legend.position="none")
+  theme_minimal()
+
 
 # Initial plot for fun
 patch_map <- ggplot(landscape_data) +
   geom_raster(aes(x = x, y = -y, fill = as.factor(clusters))) +
-  scale_fill_viridis(discrete = TRUE, option = "D", na.value = "white") +  # "D" is just one of the available options
   theme(legend.position = "none") +
+  scale_fill_paletteer_d("ggsci::default_igv", na.value = "grey95")+
   coord_equal()
 patch_map
