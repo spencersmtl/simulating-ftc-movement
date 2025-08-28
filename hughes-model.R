@@ -1,24 +1,27 @@
 library(tidyverse)
 
 # dij is distance between i and j
-# dxbar is average dispersal distance of organism
+# dxbar is average dispersal distance of organism x
 # distances is all dij for one point. AKA ith row of distance matrix
 # delta_x is a scaling factor, it represents the area of one grid cell
 # D is the distance matrix
-# H / P is the herbivore / parasitoid density after growth step
-# H_star / P_star is the herbivore / parasitoid density after dispersal
-# lambda is herbivore intrinsic growth rate
+# H / P is the host / parasitoid density after growth step
+# H_star / P_star is the host / parasitoid density after dispersal
 # a is parasitoid search rate
 # I is a habitat suitability vector
-# phi is parasitoid phenology. phi = 0 means P escape H density dependent mortality
 
 # 10x10 tester
 load(file = "data/10x10_landscape_info.RData")
 load(file = "data/10x10_dist_matrix.RData")
-D <- gp_movement_matrix
-omega <- nrow(D)
+K_H <- gp_movement_matrix
+K_P <- gp_movement_matrix/2
+omega <- nrow(K)
 landscape_dataframe <- gp_landscape
 habitat_suitability <- 1-round(landscape_dataframe$value)
+lambda <- 2.61 # Host intrinsic growth rate
+xi <- 8.06 # Parasitoid intrinsic growth rate
+phi <- 0.35 # Parasitoid phenology. phi = 0 means P escape H density dependent mortality
+
 
 # Dispersal kernel ####
 # 1. movement kernel
@@ -28,27 +31,26 @@ m_kernel <- function(dij, dxbar) {
 
 # 2. Cut‑off distance d_max(dxbar)
 d_max <- function(dxbar) {
-  -0.5 * dxbar * log(pi * dxbar^2 * 1e-10 / 2)
+  -0.5 * dxbar * log(pi * dxbar^2 * 10e-10 / 2)
 }
 
 # 3. Single‐entry of normalized kernel k_ij of species x
-kernel_element <- function(dij, distances, dxbar, delta_x) {
+kernel_element <- function(dij, dxbar, delta_x) {
   dm   <- d_max(dxbar)
   if (dij > dm) return(0)
-  num  <- m_kernel(dij, dxbar) * delta_x^2
-  denom <- sum(m_kernel(distances[distances <= dm], dxbar) * delta_x^2)
-  num / denom
+  numerator  <- m_kernel(dij, dxbar) * delta_x^2
+  denominator <- sum(m_kernel(dij[dij <= dm], dxbar) * delta_x^2)
+  numerator / denominator
 }
 
 # 4. Full kernel matrix K (Ω×Ω) for species x
-compute_kernel_matrix <- function(distance_matrix, dxbar, delta_x) {
-  Ω <- nrow(distance_matrix)
-  K <- matrix(0, nrow=Ω, ncol=Ω)
-  for (i in seq_len(Ω)) {
-    d_row <- distance_matrix[i, ]
-    for (j in seq_len(Ω)) {
+compute_kernel_matrix <- function(distances, dxbar, delta_x) {
+  omega <- nrow(distances)
+  K <- matrix(0, nrow=omega, ncol=omega)
+  for (i in seq_len(omega)) {
+    d_row <- distances[i, ]
+    for (j in seq_len(omega)) {
       K[i,j] <- kernel_element(dij      = d_row[j],
-                               distances = d_row,
                                dxbar     = dxbar,
                                delta_x   = delta_x)
     }
@@ -58,74 +60,62 @@ compute_kernel_matrix <- function(distance_matrix, dxbar, delta_x) {
 
 
 # Compute dispersal ####
-# H* = K_H %*% H
-compute_H_star <- function(H, K_H) {
-  as.vector(K_H %*% H)
+compute_H_star <- function(Hj, K_H) { # Density of hosts after dispersing
+  as.vector(K_H * Hj) # Summed (dispersal probabilities from i to all j's) * (densities at j)
 }
 
-# P* = K_P %*% P
-compute_P_star <- function(P, K_P) {
-  as.vector(K_P %*% P)
+compute_P_star <- function(Pj, K_P) { # Density of parasitoids after dispersing
+  as.vector(K_P * Pj)
 }
 
-# Herbivore growth ####
-# 1. Density‐dependence: exp(−log(λ)·H*)
-density_regulation <- function(H_star, lambda) {
+# host growth ####
+density_regulation <- function(H_star, lambda) { # Density‐dependence: exp(−log(λ)·H*)
   exp(2 * -log(lambda) * H_star)
 }
 
-# 2. Survival after parasitism: exp(−a·P*)
-host_parasitism_survival <- function(P_star, a = 1) {
+host_parasitism_survival <- function(P_star, a = 1) { # Survival after parasitism: exp(−a·P*)
   exp(-a * P_star)
 }
 
-# 3. Full H‐update
-update_H <- function(H_star, P_star, habitat_suitability, lambda, a = 1) {
+update_H <- function(H_star, P_star, habitat_suitability, lambda, a = 1) { # Full host growth. h(H*,P*)
   habitat_suitability * lambda * H_star * 
     density_regulation(H_star, lambda) * 
     host_parasitism_survival(P_star, a)
 }
 
 # Parasitoid growth ####
-# 1. Functional response: 1 − exp(−a·P*)
-parasitoid_attack <- function(P_star, a = 1) {
+parasitoid_attack <- function(P_star, a = 1) { # T2 functional response: 1 − exp(−a·P*)
   1 - exp(-a * P_star)
 }
 
-# 2. Regulation via host‐density feedback: exp(−ϕ·log(λ)·H*)
-parasitoid_regulation <- function(H_star, lambda, phi = 0) {
+parasitoid_regulation <- function(H_star, lambda, phi = 0) { # Host‐density feedback of parasitoids: exp(−ϕ·log(λ)·H*)
   exp(-phi * log(lambda) * H_star)
 }
 
-# 3. Parasitoid recruitment rate: xi = a * b * K
-compute_xi <- function(a, b, K) {
+compute_xi <- function(a, b, K) { # Parasitoid recruitment rate: xi = a * b * K
   xi <- a * b * K
   return(xi)
 }
 
-# 4. Full P‐update
-update_P <- function(H_star, P_star, habitat_suitability, xi, lambda, a = 1, phi = 0) {
+update_P <- function( # Full parasitoid growth
+    H_star, P_star, habitat_suitability, xi, lambda, a = 1, phi = 0) {
   habitat_suitability * xi * H_star *
     parasitoid_attack(P_star, a) *
     parasitoid_regulation(H_star, lambda, phi)
 }
 
 # Step simulator ####
-step_host_parasitoid <- function(H, P, # densities
-                                 dist_mat, # distance matrix
-                                 dxbar_H, dxbar_P, # avg dispersal distances
-                                 delta_x, # pixel scale
-                                 habitat_suitability, # habitat suitability
-                                 lambda,       # host growth
-                                 a_H  = 1,     # host parasitism coefficient
-                                 xi,           # parasitoid recruitment
-                                 a_P  = 1,     # parasitoid attack
-                                 phi  = 0      # feedback strength
-) {
-  # build kernels
-  K_H <- compute_kernel_matrix(dist_mat, dxbar_H, delta_x)
-  K_P <- compute_kernel_matrix(dist_mat, dxbar_P, delta_x)
-  
+
+step_HP_kernel <- function(H, P, # densities
+                           K_H, K_P, #  dispersal kernels
+                           habitat_suitability, # habitat suitability
+                           lambda,       # host growth
+                           a_H  = 1,     # host parasitism coefficient
+                           xi,           # parasitoid recruitment
+                           a_P  = 1,     # parasitoid attack
+                           phi  = 0) { # feedback strength
+  # Computes a single time step, t for all four equations in model
+
   # dispersal
   Hs <- compute_H_star(H, K_H)
   Ps <- compute_P_star(P, K_P)
