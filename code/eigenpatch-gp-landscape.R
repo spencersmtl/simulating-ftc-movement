@@ -1,5 +1,5 @@
 # Load functions ####
-source("code/functions.R")
+library(eigenmove)
 library(gridExtra)
 library(ggplotify)
 
