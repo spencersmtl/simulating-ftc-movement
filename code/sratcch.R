@@ -1,3 +1,4 @@
+source("code/mapping.R")
 
 # Generate the landscape
 landscape <- create_hex_landscape()
