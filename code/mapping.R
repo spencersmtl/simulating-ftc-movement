@@ -2,12 +2,12 @@ library(sf)
 library(ggplot2)
 
 create_hex_landscape <- function() {
-  bbox <- st_bbox(c(xmin = 1, ymin = 1, xmax = 32, ymax = 32)) # Set bounds
+  bbox <- st_bbox(c(xmin = 1, ymin = 1, xmax = 8, ymax = 8)) # Set bounds
   
   hex_grid <- st_make_grid(
     st_as_sfc(bbox), # Convert bounding polygon to sfc object
     cellsize = 1,        # Size of each cell
-    square = FALSE,      # Create hexagons instead of squares
+    square = FALSE,      # Cells are hexagons instead of squares
     what = "polygons"    # We want the actual polygon cells
   )
   
