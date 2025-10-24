@@ -43,9 +43,3 @@ sparse_kernel <- function(landscape, d_bar_x, maxdist_mult = 4) {
   
   return(K)  
 }
-
-# Example usage:
-# landscape <- create_hex_landscape()
-# K_sparse <- build_sparse_kernel(landscape, d_bar_x = 1.5, maxdist_mult = 4)
-# H <- numeric(nrow(landscape)); H[30] <- 1
-# H_next <- as.numeric(K_sparse %*% H)
