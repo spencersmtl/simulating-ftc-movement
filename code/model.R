@@ -23,7 +23,7 @@ sparse_kernel <- function(landscape, d_bar_x, maxdist_mult = 4) {
   n <- nrow(coords) # number of cells
   maxdist <- maxdist_mult * d_bar_x # max dispersal distance
   
-  # Build sparse dispersal kernel. Ignore computing dispersal to cells further than maxdist
+  # Build sparse dispersal kernel (Ignore computing dispersal to cells further than maxdist)
   nb <- dnearneigh(x = coords, d1 = 0, d2 = maxdist, longlat = FALSE)   # List of possible destinations for each cell
   
   rows <- rep(1:n, lengths(nb) + 1) # big vector of all origin cells. Repeat origin for each destination

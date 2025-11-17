@@ -19,14 +19,15 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
   pts <- st_as_sf(df_px, coords = c("x", "y"), crs = NA) # points as sf pixel cartesian coordinates
   bbox_sfc <- st_as_sfc(st_bbox(pts)) # pixel bounding box
   bbox_exp <- st_buffer(bbox_sfc, dist = 1e-5) # expand the pixel bounding box ever-so-slightly to avoid clipping hexes
-  hex_grid <- st_make_grid(bbox_exp, # make hex grid based off expanded pixel bounding box
+
+  hex_grid <- st_make_grid(bbox_sfc,   # Make a hex grid over the (slightly expanded) bounding box
                            cellsize = cellsize,
                            square = FALSE,
                            what = "polygons")
-  hex_sf <- st_sf(cell_id = seq_along(hex_grid), geometry = hex_grid) # sf object of all hexes
-  hex_sf <- st_intersection(hex_sf, bbox_sfc) # trim expanded bounding box to original size 
-  hex_sf <- hex_sf[st_geometry_type(hex_sf) %in% c("POLYGON", "MULTIPOLYGON"), ] # drop unwanted geometries
-  hex_sf$cell_id <- seq_len(nrow(hex_sf)) # fix cell_id's after dropping
+  inside <- st_within(st_centroid(hex_grid), bbox_sfc, sparse = FALSE)   # specify only hexes fully inside the image area
+  hex_grid_full <- hex_grid[inside, ] # keep specified
+  hex_sf <- st_sf(cell_id = seq_along(hex_grid_full), geometry = hex_grid_full) # Convert to sf and assign cell IDs
+  
   pts_to_hex <- st_join(pts, hex_sf, join = st_intersects) # assign all pixels to hexes
   
   # Quantify hexes based on point values
@@ -67,7 +68,7 @@ create_hex_landscape <- function() {
   )
   
   # Convert to sf object and add cell IDs
-  hex_sf <- st_sf(cell_id = 1:length(hex_grid), geometry = hex_grid)
+  hex_sf <- st_sf(cell_id = seq_along(hex_grid), geometry = hex_grid)
   
   return(hex_sf)
 }
