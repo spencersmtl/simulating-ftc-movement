@@ -4,47 +4,45 @@ library(imager)
 library(dplyr)
 
 load_landscape <- function(png, scale = 1, cellsize = 8) {
+  # Load and scale
   img <- imager::load.image(png) # load image
   if (!is.numeric(scale) || scale <= 0) stop("scale must be > 0") # basic scale requirement
-  if (scale != 1) img <- imager::imresize(img, scale = scale) # rescale image if specified. Higher is bigger
+  if (scale != 1) img <- imager::imresize(img, scale) # rescale image if specified. Higher is bigger
   
-  # Turn image into a dataframe and process 
+  # Turn into dataframe and process
   df_px <- as.data.frame(img) |> 
     group_by(x, y) |> 
     summarize(value = mean(value, na.rm = TRUE), # get mean RGBO of each pixel
               .groups = "drop") |>
     mutate(y = max(y) - y + 1) # flip image right side up
   
-  # Make a hex grid
+  # Turn into hex grid
   pts <- st_as_sf(df_px, coords = c("x", "y"), crs = NA) # points as sf pixel cartesian coordinates
   bbox_sfc <- st_as_sfc(st_bbox(pts)) # pixel bounding box
-  bbox_exp <- st_buffer(bbox_sfc, dist = 1e-5) # expand the pixel bounding box ever-so-slightly to avoid clipping hexes
-
-  hex_grid <- st_make_grid(bbox_sfc,   # Make a hex grid over the (slightly expanded) bounding box
-                           cellsize = cellsize,
-                           square = FALSE,
-                           what = "polygons")
+  bbox_exp <- st_buffer(bbox_sfc, dist = 1e-5) # tiny buffer to avoid edge issues
+  hex_grid <- st_make_grid(   # Make a hex grid over the bounding box
+    bbox_exp, 
+    cellsize = cellsize,
+    square = FALSE,
+    what = "polygons")
   inside <- st_within(st_centroid(hex_grid), bbox_sfc, sparse = FALSE)   # specify only hexes fully inside the image area
-  hex_grid_full <- hex_grid[inside, ] # keep specified
+  hex_grid_full <- hex_grid[inside, ] # keep specified hexes
   hex_sf <- st_sf(cell_id = seq_along(hex_grid_full), geometry = hex_grid_full) # Convert to sf and assign cell IDs
-  
   pts_to_hex <- st_join(pts, hex_sf, join = st_intersects) # assign all pixels to hexes
-  
-  # Quantify hexes based on point values
-  hex_vals <- pts_to_hex |> # hex_vals is an sf of aggregated points with geometries
-    group_by(cell_id) |> 
-    summarize(value = mean(value, na.rm = TRUE), .groups = "drop") # get mean value of hexes
   
   # Make sure scale/cellsize is appropriate
   counts <- tabulate(pts_to_hex$cell_id, nbins = nrow(hex_sf)) # Count how many pixels were assigned to each hex
   empty_frac <- mean(counts == 0) # Count how many empty hexes there are
   if (empty_frac > 0.01) {stop(sprintf(
-      "cellsize too small for this image: %.1f%% of hexes contain no pixels. Increase cellsize or increase scale factor.",
-      empty_frac * 100))}
+    "cellsize too small for this image: %.1f%% of hexes contain no pixels. Increase cellsize or increase scale factor.",
+    empty_frac * 100))}
   
-  # Clean up objects
+  # Quantify hexes based on pixel values for optional modeling use later (e.g., habitat quality)
+  hex_vals <- pts_to_hex |> # hex_vals is an sf of aggregated points with geometries
+    group_by(cell_id) |> 
+    summarize(value = mean(value, na.rm = TRUE), .groups = "drop") # get mean value of hexes
   hex_vals_df <- sf::st_set_geometry(hex_vals, NULL)   # plain df to use left_join
-  hex_sf <- dplyr::left_join(hex_sf, hex_vals_df, by = "cell_id")
+  hex_sf <- dplyr::left_join(hex_sf, hex_vals_df, by = "cell_id") # add values to hex_sf
   hex_sf$value[is.na(hex_sf$value)] <- 1   # set NAs to base habitat type
   
   # Set habitat qualities
@@ -53,8 +51,24 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
     hex_sf$value <= 0.5 ~ "high") |>
     factor(levels = c("low", "high")) 
   
-  return(hex_sf) 
+  # Compute centroids of cells
+  cents <- st_coordinates(st_centroid(hex_sf))
+  hex_sf$centroid_x <- cents[,1]
+  hex_sf$centroid_y <- cents[,2]
+  
+  # Compute raw spacing between any adjacent hexes
+  neighbors <- st_touches(hex_sf)
+  i <- 1
+  j <- neighbors[[i]][1]
+  raw_adj <- sqrt(sum((cents[i, ] - cents[j, ])^2))
+  
+  # Normalize centroid coordinates so adjacent spacing = 1
+  hex_sf$centroid_x <- hex_sf$centroid_x / raw_adj
+  hex_sf$centroid_y <- hex_sf$centroid_y / raw_adj
+  
+  return(hex_sf)
 }
+
 
 
 create_hex_landscape <- function() {

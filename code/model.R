@@ -1,5 +1,5 @@
 library(sf)
-library(spdep)
+library(nngeo)
 library(Matrix)
 
 # Host growth
@@ -17,29 +17,25 @@ dispersal_kernel <- function(d_ij, d_bar_x) {
   (2 / (pi * d_bar_x^2)) * exp(-2 * d_ij / d_bar_x)
 }
 
-# Sparsify dispersal
-sparse_kernel <- function(landscape, d_bar_x, maxdist_mult = 4) {
-  coords <- st_coordinates(st_centroid(landscape)) # Set coordinates to cell centroids
-  n <- nrow(coords) # number of cells
+# Sparse dispersal
+sparse_kernel <- function(landscape, d_bar_x, maxdist_mult = 4, normalize_rows = TRUE) {
+  n <- nrow(landscape) # number of cells
   maxdist <- maxdist_mult * d_bar_x # max dispersal distance
   
-  # Build sparse dispersal kernel (Ignore computing dispersal to cells further than maxdist)
-  nb <- dnearneigh(x = coords, d1 = 0, d2 = maxdist, longlat = FALSE)   # List of possible destinations for each cell
+  # Get normalized centroids
+  coords <- as.matrix(
+    sf::st_set_geometry(landscape, NULL)[, c("centroid_x", "centroid_y")])
   
-  rows <- rep(1:n, lengths(nb) + 1) # big vector of all origin cells. Repeat origin for each destination
-  cols <- unlist( # big vector of all destinations for each origin cell. unlist turns list into one big vector
-    lapply(
-      1:n, # for each cell
-      function(i) c(i, nb[[i]]))) # make pairs: `cell index` paired with `possible destination`
+  # Assemble dispersal matrix
+  dists <- as.matrix(dist(coords)) # Compute pairwise distance matrix
+  dists[dists > maxdist] <- 0 # ignore distances beyond maxdist
+  diag(dists) <- 0   # distance to self is zero
+  weights <- dispersal_kernel(dists, d_bar_x)   # Compute kernel weights
+  weights <- (weights + t(weights)) / 2  # Ensure symmetry
+  weights <- weights / rowSums(weights)  # Normalize rows
   
-  diffcells <- coords[rows, , drop = FALSE] - coords[cols, , drop = FALSE] # differences between coordinates of possible paths
-  dists <- sqrt(rowSums(diffcells^2))
+  K <- Matrix(weights, sparse = TRUE)   # Convert to sparse matrix
   
-  weights <- dispersal_kernel(dists, d_bar_x)   # compute kernel weights
-  
-  # assemble sparse matrix (rows = origin, cols = destination)
-  K <- sparseMatrix(i = rows, j = cols, x = weights, dims = c(n, n))
-  # Here normalize rows if you don't want absorbing conditions
-  
-  return(K)  
+  return(K)
 }
+  
