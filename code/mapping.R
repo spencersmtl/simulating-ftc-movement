@@ -8,17 +8,18 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
   img <- imager::load.image(png) # load image
   if (!is.numeric(scale) || scale <= 0) stop("scale must be > 0") # basic scale requirement
   if (scale != 1) img <- imager::imresize(img, scale) # rescale image if specified. Higher is bigger
+  browser()
   
   # Turn into dataframe and process
-  df_px <- as.data.frame(img) |> 
+  pixel_df <- as.data.frame(img) |> 
     group_by(x, y) |> 
     summarize(value = mean(value, na.rm = TRUE), # get mean RGBO of each pixel
               .groups = "drop") |>
     mutate(y = max(y) - y + 1) # flip image right side up
   
   # Turn into hex grid
-  pts <- st_as_sf(df_px, coords = c("x", "y"), crs = NA) # points as sf pixel cartesian coordinates
-  bbox_sfc <- st_as_sfc(st_bbox(pts)) # pixel bounding box
+  point_geometry <- st_as_sf(pixel_df, coords = c("x", "y")) # points as sf pixel cartesian coordinates
+  bbox_sfc <- st_as_sfc(st_bbox(point_geometry)) # pixel bounding box
   bbox_exp <- st_buffer(bbox_sfc, dist = 1e-5) # tiny buffer to avoid edge issues
   hex_grid <- st_make_grid(   # Make a hex grid over the bounding box
     bbox_exp, 
@@ -26,45 +27,27 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
     square = FALSE,
     what = "polygons")
   inside <- st_within(st_centroid(hex_grid), bbox_sfc, sparse = FALSE)   # specify only hexes fully inside the image area
-  hex_grid_full <- hex_grid[inside, ] # keep specified hexes
-  hex_sf <- st_sf(cell_id = seq_along(hex_grid_full), geometry = hex_grid_full) # Convert to sf and assign cell IDs
-  pts_to_hex <- st_join(pts, hex_sf, join = st_intersects) # assign all pixels to hexes
+  hex_grid <- hex_grid[inside, ] # keep specified hexes
+  hex_sf <- st_sf(cell_id = seq_along(hex_grid), geometry = hex_grid) # Convert to sf and assign cell IDs
+  pts_to_hex <- st_join(point_geometry, hex_sf, join = st_intersects) # assign all pixels to hexes
+  
+  # Add centroids
+  centroids <- st_coordinates(st_centroid(hex_sf))
+  hex_sf$centroid_x <- centroids[,1]
+  hex_sf$centroid_y <- centroids[,2]
   
   # Make sure scale/cellsize is appropriate
-  counts <- tabulate(pts_to_hex$cell_id, nbins = nrow(hex_sf)) # Count how many pixels were assigned to each hex
-  empty_frac <- mean(counts == 0) # Count how many empty hexes there are
-  if (empty_frac > 0.01) {stop(sprintf(
-    "cellsize too small for this image: %.1f%% of hexes contain no pixels. Increase cellsize or increase scale factor.",
-    empty_frac * 100))}
-  
-  # Quantify hexes based on pixel values for optional modeling use later (e.g., habitat quality)
-  hex_vals <- pts_to_hex |> # hex_vals is an sf of aggregated points with geometries
-    group_by(cell_id) |> 
-    summarize(value = mean(value, na.rm = TRUE), .groups = "drop") # get mean value of hexes
-  hex_vals_df <- sf::st_set_geometry(hex_vals, NULL)   # plain df to use left_join
-  hex_sf <- dplyr::left_join(hex_sf, hex_vals_df, by = "cell_id") # add values to hex_sf
-  hex_sf$value[is.na(hex_sf$value)] <- 1   # set NAs to base habitat type
-  
-  # Set habitat qualities
-  hex_sf$type <- dplyr::case_when( # set habitat types
-    hex_sf$value > 0.5 ~ "low", # add more mean RGBO cases here
-    hex_sf$value <= 0.5 ~ "high") |>
-    factor(levels = c("low", "high")) 
-  
-  # Compute centroids of cells
-  cents <- st_coordinates(st_centroid(hex_sf))
-  hex_sf$centroid_x <- cents[,1]
-  hex_sf$centroid_y <- cents[,2]
-  
-  # Compute raw spacing between any adjacent hexes
-  neighbors <- st_touches(hex_sf)
-  i <- 1
-  j <- neighbors[[i]][1]
-  raw_adj <- sqrt(sum((cents[i, ] - cents[j, ])^2))
-  
-  # Normalize centroid coordinates so adjacent spacing = 1
-  hex_sf$centroid_x <- hex_sf$centroid_x / raw_adj
-  hex_sf$centroid_y <- hex_sf$centroid_y / raw_adj
+  na_count <- sum(is.na(pts_to_hex$cell_id)) # Count how many pixels were not assigned to a hex
+  if (na_count/nrow(pts_to_hex) > 0.2) {warning(paste(
+    "cellsize is large for this image: ", 
+    round(na_count/nrow(pts_to_hex)*100, 1), 
+    "% of pixels not assigned to hexes, consider decreasing cellsize."))}
+  pixel_per_hex_count <- tabulate(pts_to_hex$cell_id, nbins = nrow(hex_sf)) # Count how many pixels were assigned to each hex
+  empty_frac <- mean(pixel_per_hex_count == 0) # Count how many empty hexes there are
+  if (empty_frac > 0.01) {stop(paste(
+    "cellsize too small for this image: ",  
+    empty_frac * 100, 
+    "% of hexes contain no pixels. Increase cellsize or increase scale factor."))}
   
   return(hex_sf)
 }
