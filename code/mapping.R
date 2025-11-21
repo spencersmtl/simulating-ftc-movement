@@ -8,7 +8,6 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
   img <- imager::load.image(png) # load image
   if (!is.numeric(scale) || scale <= 0) stop("scale must be > 0") # basic scale requirement
   if (scale != 1) img <- imager::imresize(img, scale) # rescale image if specified. Higher is bigger
-  browser()
   
   # Turn into dataframe and process
   pixel_df <- as.data.frame(img) |> 
@@ -31,10 +30,12 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
   hex_sf <- st_sf(cell_id = seq_along(hex_grid), geometry = hex_grid) # Convert to sf and assign cell IDs
   pts_to_hex <- st_join(point_geometry, hex_sf, join = st_intersects) # assign all pixels to hexes
   
-  # Add centroids
-  centroids <- st_coordinates(st_centroid(hex_sf))
-  hex_sf$centroid_x <- centroids[,1]
-  hex_sf$centroid_y <- centroids[,2]
+  # Add simple hex values for habitat modeling
+  hex_vals <- pts_to_hex |> # hex_vals is an sf of aggregated points with geometries
+    filter(!is.na(cell_id)) |>
+    group_by(cell_id) |> 
+    summarize(value = mean(value, na.rm = TRUE), .groups = "drop") # get mean value of hexes
+  hex_sf <- st_join(hex_sf, hex_vals["value"]) # add values to hex_sf
   
   # Make sure scale/cellsize is appropriate
   na_count <- sum(is.na(pts_to_hex$cell_id)) # Count how many pixels were not assigned to a hex
@@ -52,23 +53,15 @@ load_landscape <- function(png, scale = 1, cellsize = 8) {
   return(hex_sf)
 }
 
-
-
-create_hex_landscape <- function() {
-  bounding_box <- st_bbox(c(xmin = 1, ymin = 1, xmax = 8, ymax = 8)) # Set bounds
-  
-  hex_grid <- st_make_grid(
-    st_as_sfc(bounding_box), # Convert bounding polygon to sfc object
-    cellsize = 1,        # Size of each cell
-    square = FALSE,      # Cells are hexagons instead of squares
-    what = "polygons"    # We want the actual polygon cells
-  )
-  
-  # Convert to sf object and add cell IDs
-  hex_sf <- st_sf(cell_id = seq_along(hex_grid), geometry = hex_grid)
-  
-  return(hex_sf)
+basic_habitat_quality <- function(landscape, threshold = 0.5){
+  # Set habitat qualities
+  landscape$type <- case_when( # set habitat types
+    landscape$value > threshold ~ "low", # add more mean RGBO cases here
+    landscape$value <= threshold ~ "high") |>
+    factor(levels = c("low", "high")) 
+  return(landscape)
 }
+
 
 visualise_landscape <- function(landscape){
   ggplot() +
