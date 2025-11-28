@@ -11,7 +11,7 @@ landscape <- load_landscape("images/blobs.png",
 visualise_landscape(landscape)
 
 # Generate sparse dispersal kernel
-K <- sparse_kernel(landscape, d_bar_x = 1)
+K <- compute_sparse_distance(landscape, d_bar_x = 1)
 
 # Initialize host distribution
 H <- rep(0, nrow(landscape))

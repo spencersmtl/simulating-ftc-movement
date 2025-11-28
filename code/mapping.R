@@ -62,7 +62,6 @@ basic_habitat_quality <- function(landscape, threshold = 0.5){
   return(landscape)
 }
 
-
 visualise_landscape <- function(landscape){
   ggplot() +
     geom_sf(data = landscape, 
@@ -71,8 +70,5 @@ visualise_landscape <- function(landscape){
             linewidth = 0) +    # Border line width (integers)
     scale_fill_manual(values = c("low" = "lightgrey",
                                  "high" = "darkgreen")) +
-    labs(title = "Toy Landscape",
-         x = "Longitude", 
-         y = "Latitude") +
-    theme_void() # Switch to theme_minimal if you want to see labels
+    theme_void()
 }

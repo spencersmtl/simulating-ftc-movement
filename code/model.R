@@ -26,7 +26,7 @@ compute_sparse_distance <- function(landscape,
   
   n <- nrow(landscape) # number of cells
   centroids <- st_centroid(landscape)
-  centroid_dist <- st_distance(centroids[1, ], centroids[2, ]) # distance between centroids (cellsize)
+  centroid_dist <- as.numeric(st_distance(centroids[1, ], centroids[2, ])) # distance between adjacent centroids (cellsize)
   avg_host_dispersal <- avg_host_dispersal * centroid_dist
   max_host_dispersal <- max_host_dispersal_mult * avg_host_dispersal # max dispersal distance
   
@@ -41,8 +41,8 @@ compute_sparse_distance <- function(landscape,
   )
   origins <- rep(1:n, lengths(neighbors$nn)) # origin indices
   destinations <- unlist(neighbors$nn) # destination indices
-  neighbor_distances <- unlist(neighbors$dist) # distances
-  
+  neighbor_distances <- as.numeric(unlist(neighbors$dist)) # distances
+  browser()
   # assemble as sparse matrix
   D <- sparseMatrix(i = origins, 
                     j = destinations, 
