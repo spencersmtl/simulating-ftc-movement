@@ -42,12 +42,16 @@ compute_sparse_distance <- function(landscape,
   origins <- rep(1:n, lengths(neighbors$nn)) # origin indices
   destinations <- unlist(neighbors$nn) # destination indices
   neighbor_distances <- as.numeric(unlist(neighbors$dist)) # distances
-  browser()
-  # assemble as sparse matrix
-  D <- sparseMatrix(i = origins, 
-                    j = destinations, 
-                    x = neighbor_distances, 
-                    dims = c(n, n))
   
-  return(D)
+  # assemble as sparse matrix
+  sparse_distance_matrix <- sparseMatrix(i = origins, 
+                                         j = destinations, 
+                                         x = neighbor_distances, 
+                                         dims = c(n, n))
+  
+  return(sparse_distance_matrix)
 }
+
+# compute_dispersal <- function(landscape,
+#                               sparse_distance_matrix,
+#                               )

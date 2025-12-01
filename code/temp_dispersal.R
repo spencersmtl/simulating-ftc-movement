@@ -22,7 +22,7 @@ visualise_landscape(landscape)
 # Generate sparse dispersal kernel
 D <- compute_sparse_distance(
   landscape, 
-  avg_host_dispersal = 1, 
+  avg_host_dispersal = 2, 
   max_host_dispersal_mult = 1.1, 
   normalize_rows = TRUE)
 D
