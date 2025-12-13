@@ -13,9 +13,10 @@ parasitoid_growth <- function(H, P, lambda, a) {
 }
 
 # Sparse distance matrix computation
-compute_sparse_distance <- function(landscape, 
-                                    max_host_dispersal = nrow(landscape), 
-                                    normalize_rows = TRUE) 
+compute_sparse_distance <- function(
+    landscape, 
+    max_host_dispersal = nrow(landscape), 
+    normalize_rows = TRUE) 
 {
   n <- nrow(landscape) # number of cells
   centroids <- st_centroid(landscape)
@@ -36,57 +37,51 @@ compute_sparse_distance <- function(landscape,
   neighbor_distances <- as.numeric(unlist(neighbors$dist)) # distances
   
   # assemble as sparse matrix
-  sparse_distance_matrix <- sparseMatrix(i = origins, 
-                                         j = destinations, 
-                                         x = neighbor_distances, 
-                                         dims = c(n, n))
+  sparse_distances <- sparseMatrix(i = origins, 
+                                   j = destinations, 
+                                   x = neighbor_distances, 
+                                   dims = c(n, n))
   
-  return(sparse_distance_matrix)
+  return(sparse_distances)
 }
 
-compute_dispersal <- function(landscape,
-                              compute_sparse_distance,
-                              average_host_dispersal = 1,
-)
+# build a normalized dispersal kernel (works with sparse matrices)
+initialize_dispersal <- function(
+    distances,
+    scale,
+    kernel_function = c("neg_exponential","gaussian","cauchy")) 
 {
-  # Example kernel function: exponential (Laplace-like)
-  kernel_fun <- function(d, scale) {
-    exp(- d / scale)
-  }
-  # You can swap in other families: gaussian: exp(-(d^2)/(2*scale^2)),
-  # cauchy/fat-tailed: 1 / (1 + (d/scale)^alpha), etc.
+  kernel_function <- match.arg(kernel_function)
+  kernel_fun <- switch(
+    kernel_function,
+    neg_exponential = function(d, s) exp(-d / s),
+    gaussian        = function(d, s) exp(-(d^2) / (2 * s^2)),
+    cauchy          = function(d, s) 1 / (1 + (d / s)^2)
+  )
   
-  initialize_dispersal <- function(D, density, scale,
-                                   kernel_fun = kernel_fun,
-                                   normalize_rows = TRUE,
-                                   dispersal_survival = 1) {
-    stopifnot(inherits(D, "dgCMatrix") || inherits(D, "dgTMatrix"),
-              length(density) == nrow(D))
-    
-    # 1) convert distances in the non-zero entries to kernel values
-    K <- D  # copy the sparse structure
-    K@x <- kernel_fun(K@x, scale)  # only transforms non-zero entries
-    
-    # 2) (optional) normalize rows so that each row sums to 1 (row-stochastic)
-    if (normalize_rows) {
-      rs <- rowSums(K)             # efficient for sparse matrices
-      rs[rs == 0] <- 1             # avoid division by zero (isolated cells)
-      inv_rs <- 1 / rs
-      K <- Diagonal(x = inv_rs) %*% K  # left-multiply scales rows
-    }
-    
-    # 3) Apply dispersal (rows=origin convention)
-    # If density is a numeric vector (length n), compute post-dispersal density.
-    # For rows-as-origin, new_density = t(K) %*% density
-    new_density <- as.numeric(t(K) %*% density) * dispersal_survival
-    
-    # 4) Quick mass check (should be ~ same sum if kernel is stochastic and survival=1)
-    mass_before <- sum(density)
-    mass_after <- sum(new_density)
-    
-    list(K = K,
-         post_density = new_density,
-         mass_before = mass_before,
-         mass_after = mass_after)
-  }
+  # apply kernel to stored sparse entries
+  K <- distances
+  K@x <- kernel_fun(K@x, scale)
+  
+  # normalize rows
+  row_totals <- Matrix::rowSums(K)
+  row_totals[row_totals == 0] <- 1
+  K <- Diagonal(x = 1 / row_totals) %*% K
+  
+  K
+}
+
+# single timestep dispersal (call every timestep)
+disperse <- function(
+    kernel, 
+    density, 
+    survival = 1) # Survival probability during dispersal
+{
+  as.numeric(kernel %*% density) * survival
+}
+
+# convenience: return a disperser closure
+make_disperser <- function(distances, scale, kernel_function, survival = 1) {
+  K <- initialize_dispersal(distances, scale, kernel_function)
+  function(density) disperse(K, density, survival)
 }

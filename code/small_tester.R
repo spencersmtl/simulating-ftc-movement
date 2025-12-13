@@ -12,18 +12,8 @@ landscape <- load_landscape(
   basic_habitat_quality(threshold = 0.5) 
 visualise_landscape(landscape)
 
-# Generate sparse dispersal kernel
-D <- compute_sparse_distance(landscape, max_host_dispersal = 1)
+# Generate sparse distance matrix
+D <- compute_sparse_distance(landscape, max_host_dispersal = 2)
 
+K <- initialize_dispersal(D, scale = 1, kernel_function = "neg_exponential")
 
-
-H <- matrix(nrow = nrow(landscape), ncol = 20)
-H[,1] <- ifelse(landscape$type == "high", 1, 0)
-
-for(t in 2:20){
-  
-  H[,t]
-}
-
-
-head(H)
