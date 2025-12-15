@@ -26,53 +26,6 @@ compute_sparse_distance <- function(
   centroid_dist <- as.numeric(st_distance(centroids[1, ], centroids[2, ])) # distance between adjacent centroids (cellsize)
   max_host_dispersal <- max_host_dispersal * centroid_dist # max dispersal distance
 
-#   landscape <- landscape %>%
-#     mutate(
-#       x = as.integer(factor(round(coords[,1], 6))),
-#       y = as.integer(factor(round(coords[,2], 6))) 
-#     )
-#   
-#   n_x <- max(landscape$x)
-#   n_y <- max(landscape$y)
-#   
-#   k <- ceiling(max_host_dispersal / centroid_dist)
-#   
-#   neighbors_list <- lapply(
-#     1:n, 
-#     function(i) {
-#       origin_col <- landscape$x[i]
-#       origin_row <- landscape$y[i]
-#       
-#       candidate_cols <- ((origin_col + (-(k*2):(k*2)) - 1) %% n_x) + 1 # wrap in x direction
-#       candidate_rows <- origin_row + (-k:k) # don't wrap in y direction
-#       candidate_rows <- candidate_rows[
-#         candidate_rows >= 1 & candidate_rows <= n_y]
-#       
-#       candidate_cells <- as.vector(
-#         outer(candidate_rows, candidate_cols, Vectorize(
-#           function(y, x) {
-#             idx <- landscape$cell_id[landscape$y==y & landscape$x==x]
-#             if(length(idx)==0) NA else idx
-#           }
-#         ))
-#       )
-#       candidate_cells <- candidate_cells[!is.na(candidate_cells)]
-#       
-#       candidate_cells
-#     })
-# # 
-#   dx <- coords[candidate_cells, 1] - coords[i, 1]
-#   dx <- dx - (max(coords[,1]) - min(coords[,1])) * round(dx / (max(coords[,1]) - min(coords[,1])))  # wrap in x
-#   dy <- coords[candidate_cells, 2] - coords[i, 2]  # no wrap in y
-#   
-#   dists <- sqrt(dx^2 + dy^2)
-#   
-#   # keep only neighbors within max_host_dispersal
-#   keep <- candidate_cells[dists <= max_host_dispersal]
-#   dists <- dists[dists <= max_host_dispersal]
-#   
-  
-  
   # Get neighbor coordinates and distances
   neighbors <- st_nn(
     x = centroids, 
