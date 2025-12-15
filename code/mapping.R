@@ -62,13 +62,22 @@ basic_habitat_quality <- function(landscape, threshold = 0.5){
   return(landscape)
 }
 
-visualise_landscape <- function(landscape){
+visualise_landscape <- function(landscape, density){
   ggplot() +
-    geom_sf(data = landscape, 
-            colour = "black",     # Cell border colour
-            aes(fill = type),            # No fill
-            linewidth = 0) +    # Border line width (integers)
-    scale_fill_manual(values = c("low" = "lightgrey",
-                                 "high" = "darkgreen")) +
+    geom_sf(
+      data = landscape, 
+      colour = "black",     # Cell border colour
+      aes(fill = type),            # No fill
+      linewidth = 0  # Border line width (integers)
+    ) +  
+    geom_sf_text(
+      data = landscape,
+      aes(label = round(density, 2)),
+      size = 3
+    ) +
+    scale_fill_manual(values = c(
+      "low" = "lightgrey",
+      "high" = "darkgreen")
+    ) +
     theme_void()
 }
