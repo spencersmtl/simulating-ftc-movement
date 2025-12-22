@@ -14,6 +14,12 @@ source("code/model.R")
     threshold = 0.5
   ) 
   
+  # Compute neighbours
+  neighbs <- compute_neighbors(landscape, max_host_dispersal = 1)
+  
+  # Compute neighbour distances
+  dists <- compute_sparse_distance(landscape, neighbs, max_host_dispersal = 1)
+  
   # Generate sparse distance matrix
   D <- compute_sparse_distance(landscape, max_host_dispersal = 1)
   
