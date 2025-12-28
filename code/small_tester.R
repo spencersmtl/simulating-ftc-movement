@@ -3,7 +3,10 @@ source("code/model.R")
 {
   timesteps <- 20
   max_host_dispersal <- 2 # number of adjacent cells
+  scale <- 1 # drop-off strength
+  stay_prob <- 0.5  # probability of staying in cell
   beta <- 0.8 # habitat preference
+  survival <- 1 # dispersal survival rate
   
   # load landscape
   landscape <- load_landscape("images/blobs.png", scale = 0.5, # Set scale <1 to shrink image
@@ -20,8 +23,8 @@ source("code/model.R")
   # Generate dispersal kernel
   K <- initialize_dispersal(
     dists, # sparse distance matrix
-    stay_prob = 0.5, # probability of staying in cell
-    scale = 1, # drop-off scale
+    scale, # drop-off scale
+    stay_prob, # probability of staying in cell
     kernel_function = "negative_exp",
     beta, # habitat preference strength
     Q = landscape$Q # habitat quality vector
@@ -37,7 +40,7 @@ source("code/model.R")
     H[,i] <- disperse(
       kernel = K,
       density = H[,i-1],
-      survival = 1
+      survival
     )
   }
   
