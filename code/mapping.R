@@ -2,6 +2,7 @@ library(sf)
 library(ggplot2)
 library(imager)
 library(dplyr)
+library(patchwork)
 
 load_landscape <- function(png, scale = 1, cellsize = 8) {
   # Load and scale
@@ -62,22 +63,87 @@ basic_habitat_quality <- function(landscape, threshold = 0.5){
   return(landscape)
 }
 
-visualise_landscape <- function(landscape, density){
-  ggplot() +
+dot_density_points <- function(landscape, 
+                               density, 
+                               dot_value = NULL, 
+                               seed = NULL,
+                               dot_clutter = 10) {
+  if (!is.null(seed)) set.seed(seed)
+  
+  landscape$density <- density
+
+  # auto-scale dot_value based on mean density
+  if (is.null(dot_value)) {
+    mean_density <- mean(density, na.rm = TRUE)
+    if (mean_density == 0) stop("Mean density is zero, cannot scale dots automatically.")
+    dot_value <- mean_density / dot_clutter
+  }
+  
+  # compute number of dots per hex
+  landscape <- landscape |>
+    dplyr::mutate(n_dots = round(density / dot_value))
+  
+  # check for dots
+  if (all(landscape$n_dots <= 0)) {
+    stop("No dots to plot: all densities are zero or dot_value is too high.")
+  }
+  
+  # keep hexes with >0 dots
+  landscape_with_dots <- landscape |>
+    dplyr::filter(n_dots > 0)
+  
+  # generate dots
+  dots <- sf::st_sample(
+    landscape_with_dots,
+    size = landscape_with_dots$n_dots,
+    type = "random"
+  ) |>
+    sf::st_as_sf() |>
+    dplyr::mutate(dummy = 1)
+  
+  dots
+}
+
+visualise_landscape <- function(landscape, 
+                                density = NULL, 
+                                dots = NULL,
+                                dotsize = 0.6,
+                                show_legend = TRUE) {
+  p <- ggplot() +
     geom_sf(
-      data = landscape, 
-      colour = "black",     # Cell border colour
-      aes(fill = type),            # No fill
-      linewidth = 0  # Border line width (integers)
-    ) +  
-    geom_sf_text(
       data = landscape,
-      aes(label = round(density, 2)),
-      size = 3
+      aes(fill = type),
+      colour = "black",
+      linewidth = 0
     ) +
     scale_fill_manual(values = c(
-      "low" = "lightgrey",
-      "high" = "darkgreen")
-    ) +
+      "low"  = "lightgrey",
+      "high" = "turquoise4"
+    )) +
     theme_void()
+  
+  if (!is.null(density)) {
+    p <- p +
+      geom_sf_text(
+        data = landscape,
+        aes(label = round(density, 2)),
+        size = 3
+      )
+  }
+  
+  if (!is.null(dots)) {
+    p <- p +
+      geom_sf(
+        data = dots,
+        colour = "black",
+        size = dotsize,
+        alpha = 0.7
+      )
+  }
+  
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+  }
+  
+  p
 }

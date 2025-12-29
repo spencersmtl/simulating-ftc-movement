@@ -1,16 +1,16 @@
 source("code/mapping.R")
 source("code/model.R")
 {
-  timesteps <- 20
-  max_host_dispersal <- 2 # number of adjacent cells
+  timesteps <- 9
+  max_host_dispersal <- 8 # number of adjacent cells
   scale <- 1 # drop-off strength
   stay_prob <- 0.5  # probability of staying in cell
-  beta <- 0.8 # habitat preference
+  beta <- 1 # habitat preference
   survival <- 1 # dispersal survival rate
   
   # load landscape
-  landscape <- load_landscape("images/blobs.png", scale = 0.5, # Set scale <1 to shrink image
-    cellsize = 80) # set cellsize <8 to make a finer hex grid overlay
+  landscape <- load_landscape("images/nb-scape-bw-thick.png", scale = 0.5, # Set scale <1 to shrink image
+    cellsize = 15) # set cellsize <8 to make a finer hex grid overlay
   landscape <- basic_habitat_quality(landscape, threshold = 0.5) # set habitat quality threshold
   landscape$Q <- ifelse(landscape$type == "high", 1, 0)
   
@@ -31,8 +31,8 @@ source("code/model.R")
   )
   
   # Initialize density
-  H <- matrix(NA_real_, nrow = nrow(landscape), ncol = timesteps)
-  H[,1] <- 1
+  H <- matrix(0, nrow = nrow(landscape), ncol = timesteps)
+  H[landscape$type == "high",1] = 1
   H[,1] <- H[,1] / sum(H[,1])
   
   # Disperse
@@ -43,6 +43,24 @@ source("code/model.R")
       survival
     )
   }
-  
-  visualise_landscape(landscape, density = H[,20])
+}
+
+visualise_landscape(landscape)
+
+visualise_landscape(landscape, density = H[,timesteps])
+
+{
+  dots <- dot_density_points(
+    landscape, density = H[,4], dot_clutter = 5)
+  visualise_lansdscape(landscape, dots = dots, dotsize = 1, show_legend = FALSE)
+}
+
+# Time-evolved with dot-density
+{
+  plots <- lapply(1:timesteps, function(t) {
+    density <- H[, t]
+    dots <- dot_density_points(landscape, density, dot_clutter = 3)
+    visualise_landscape(landscape, dots = dots, show_legend = FALSE)
+  })
+  wrap_plots(plots, ncol = 3)  # adjust ncol for layout
 }
