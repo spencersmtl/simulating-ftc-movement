@@ -67,7 +67,7 @@ dot_density_points <- function(landscape,
                                density, 
                                dot_value = NULL, 
                                seed = NULL,
-                               dot_clutter = 10) {
+                               dot_clutter = 10) { # lower loads faster but might not properly display dots
   if (!is.null(seed)) set.seed(seed)
   
   landscape$density <- density

@@ -131,30 +131,34 @@ dots <- dot_density_points(nb_landscape, density = H[,4], dot_clutter = 5)
 visualise_landscape(nb_landscape, dots = dots, dotsize = 1, show_legend = FALSE)
 ```
 
----
+------------------------------------------------------------------------
 
 This is just a demo set of movement parameters. The most important factor to what you're seeing is the `scale` parameter, which I set to 2 as a proof of concept. Next step is to parameterize my function according to how others have done it in the past for FTC (e.g., Hughes, Roland, Cobbold).
 
 An interesting thing to note is that this landscape is a cylinder. When FTC encounter the sides they wrap around to the other side and when they encounter the top, they fall off[^1].
 
-[^1]:  For awhile I was working with absorbing boundaries everywhere and incorporated horizontal wrapping more recently, I just realized I might not have correctly re-applied absorbing conditions on the top and bottom so I'll have to check that.
+[^1]: For awhile I was working with absorbing boundaries everywhere and incorporated horizontal wrapping more recently, I just realized I might not have correctly re-applied absorbing conditions on the top and bottom so I'll have to check that.
 
 Briefly, some ideas for what to do next:
 
--   Check more "FTC-appropriate" dispersal parameters
+- Check more "FTC-appropriate" dispersal parameters
 
--   Check boundary conditions
+- Check boundary conditions
 
--   Explore the current "parameter space" by changing survival, "staying-in-place" prob, and habitat preference parameters along with the change in dispersal.
+- Explore the current "parameter space" by changing survival, "staying-in-place" prob, and habitat preference parameters along with the change in dispersal.
 
--   Incorporate parasitoids
+- Incorporate parasitoids
 
--   Incorporate density dependent movement. Organisms should prioritize better habitat, but they should also avoid overcrowding.
+- Incorporate density dependent movement. Organisms should prioritize better habitat, but they should also avoid overcrowding.
 
--   Incorporate more complex resources. E.g., more categories than just "high" and "low" and give habitats the ability to change quality (be depleted)
+- Incorporate more complex resources. E.g., more categories than just "high" and "low" and give habitats the ability to change quality (be depleted)
 
--   Incorporate edge effects. Something like, use a different movement kernel when moving between hexes of different quality
+- Incorporate edge effects. Something like, use a different movement kernel when moving between hexes of different quality
 
--   Track growth and death on the landscape
+- Track growth and death on the landscape
 
 Would you like to see anything done with what I have right here? I can try different landscapes and parameters.
+
+## May 2026
+
+I have been refamiliarizing myself with my code and working on `eigenmove`.
