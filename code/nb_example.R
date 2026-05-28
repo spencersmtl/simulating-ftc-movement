@@ -1,6 +1,5 @@
 source("code/mapping.R")
 source("code/model.R")
-library(gganimate)
 
 # load and visualize landscape
 nb_landscape <- load_landscape(
@@ -17,9 +16,9 @@ H[nb_landscape$type == "high",1] = 1
 H[,1] <- H[,1] / sum(H[,1])
 
 # Compute neighbours and distances
-max_host_dispersal <- 12
-neighbs <- compute_neighbors(nb_landscape, max_host_dispersal)
-dists <- compute_sparse_distance(nb_landscape, neighbs, max_host_dispersal)
+max_dispersal <- 12
+neighbs <- compute_neighbors(nb_landscape, max_dispersal)
+dists <- compute_sparse_distance(nb_landscape, neighbs, max_dispersal)
 
 # Disperse
 scale <- 2

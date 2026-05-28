@@ -14,15 +14,15 @@ parasitoid_growth <- function(H, P, lambda, a) {
 
 compute_neighbors <- function( # Returns list of neighbors. List headers are origin cell (e.g., [[1]] is cell 1) with vector entries of indices of neighbors
     landscape,
-    max_host_dispersal = nrow(landscape))
+    max_dispersal = nrow(landscape))
 {
   # Prepare coordinates and scale ####
   n <- nrow(landscape) # number of cells
   centroids <- st_centroid(st_geometry(landscape)) # get centroids, avoid warning with st_geometry
   coords <- st_coordinates(centroids) # get centroid coordinates
   centroid_dist <- min(as.numeric(dist(coords))) # distance between adjacent centroids (cellsize)
-  k <- ceiling(max_host_dispersal) # neighbor window. This is required for wrapping
-  max_host_dispersal <- max_host_dispersal * centroid_dist # max dispersal distance
+  k <- ceiling(max_dispersal) # neighbor window. This is required for wrapping
+  max_dispersal <- max_dispersal * centroid_dist # max dispersal distance
   
   landscape <- landscape %>% # add cell x,y coords to landscape df
     mutate(x = as.integer(factor(round(coords[,1], 6))),
@@ -60,7 +60,7 @@ compute_neighbors <- function( # Returns list of neighbors. List headers are ori
 compute_sparse_distance <- function( # returns sparse distance matrix, rows as origins
     landscape, 
     neighbors_list,
-    max_host_dispersal = nrow(landscape)) 
+    max_dispersal = nrow(landscape)) 
 {
   # Prep ####
   # Prepare coordinates and scale
@@ -69,7 +69,7 @@ compute_sparse_distance <- function( # returns sparse distance matrix, rows as o
   coords <- st_coordinates(centroids) # get centroid coordinates
   centroid_dist <- min(as.numeric(dist(coords))) # distance between adjacent centroids (cellsize)
   grid_width <- max(coords[,1]) - min(coords[,1]) + centroid_dist
-  max_host_dispersal <- max_host_dispersal * centroid_dist
+  max_dispersal <- max_dispersal * centroid_dist
   
   # Row width
   y_coord_row1 <- coords[1, 2]
@@ -100,7 +100,7 @@ compute_sparse_distance <- function( # returns sparse distance matrix, rows as o
     d <- sqrt(dx^2 + dy^2)
     
     # Split local vs wrapped
-    local_mask <- d <= max_host_dispersal + 1
+    local_mask <- d <= max_dispersal + 1
     wrapped_mask <- !local_mask
     
     if (length(wrapped_mask) > 0) {
@@ -142,7 +142,7 @@ initialize_dispersal <- function(
     stay_prob,
     kernel_function = c("negative_exp","gaussian","cauchy"),
     beta = 0,
-    Q = NULL) 
+    quality = NULL) 
 {
   kernel_function <- match.arg(kernel_function)
   kernel_fun <- switch(
@@ -161,7 +161,7 @@ initialize_dispersal <- function(
   j <- rep.int(seq_len(ncol(K)), diff(K@p)) # column indices of nonzeros
   
   if(beta != 0) {
-    K@x <- K@x * exp(beta * Q[j]) # Q[j] is very confusing. It does the following: for each nonzero entry of K, give the Q value of the column it belongs to
+    K@x <- K@x * exp(beta * quality[j]) # quality[j] is very confusing. It does the following: for each nonzero entry of K, give the quality value of the column it belongs to
   }
   
   # normalize rows to sum to 1 and set diagonal to proportion that do not disperse
